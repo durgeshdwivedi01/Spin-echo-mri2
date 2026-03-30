@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MRI Spin Echo — Interactive Teaching Tool</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #050a14;
+    --panel: #0b1525;
+    --border: #1a2d4a;
+    --teal: #00e5cc;
+    --gold: #ffc947;
+    --rose: #ff4d6d;
+    --blue: #3d9bff;
+    --violet: #a855f7;
+    --green: #22d16e;
+    --text: #c8d8ee;
+    --dim: #5a7a9a;
+    --glow-teal: 0 0 18px rgba(0,229,204,0.5);
+    --glow-gold: 0 0 18px rgba(255,201,71,0.5);
+    --glow-rose: 0 0 18px rgba(255,77,109,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(18px, 2.5vw, 28px);
+    color: var(--teal);
+    letter-spacing: 0.08em;
+    text-shadow: var(--glow-teal);
+  }
+
+  header p {
+    font-size: 13px;
+    color: var(--dim);
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(0,229,204,0.08);
+    border: 1px solid rgba(0,229,204,0.25);
+    color: var(--teal);
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-top: 6px;
+    letter-spacing: 0.1em;
+  }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 16px;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .left-col { display: flex; flex-direction: column; gap: 16px; }
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--teal), transparent);
+    opacity: 0.4;
+  }
+
+  .panel-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .panel-title .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: var(--glow-teal);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── STEP CONTROLS ── */
+  .steps-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .step-btn {
+    flex: 1;
+    min-width: 90px;
+    padding: 8px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .step-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  .step-btn.active {
+    border-color: var(--teal);
+    background: rgba(0,229,204,0.1);
+    color: var(--teal);
+    box-shadow: var(--glow-teal);
+  }
+
+  .step-btn.gold.active { border-color: var(--gold); background: rgba(255,201,71,0.1); color: var(--gold); box-shadow: var(--glow-gold); }
+  .step-btn.rose.active { border-color: var(--rose); background: rgba(255,77,109,0.1); color: var(--rose); box-shadow: var(--glow-rose); }
+  .step-btn.blue.active { border-color: var(--blue); background: rgba(61,155,255,0.1); color: var(--blue); box-shadow: 0 0 18px rgba(61,155,255,0.5); }
+  .step-btn.violet.active { border-color: var(--violet); background: rgba(168,85,247,0.1); color: var(--violet); box-shadow: 0 0 18px rgba(168,85,247,0.5); }
+  .step-btn.green.active { border-color: var(--green); background: rgba(34,209,110,0.1); color: var(--green); box-shadow: 0 0 18px rgba(34,209,110,0.5); }
+
+  /* ── BLOCH SPHERE ── */
+  #blochCanvas {
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-height: 64px;
+  }
+
+  .info-box .step-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: var(--teal);
+    transition: color 0.3s;
+  }
+
+  .info-box .step-desc {
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .formula {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    margin-top: 6px;
+    padding: 4px 8px;
+    background: rgba(255,201,71,0.06);
+    border-left: 2px solid var(--gold);
+    border-radius: 2px;
+  }
+
+  /* ── SPINS GRID ── */
+  #spinsCanvas {
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* ── PULSE SEQUENCE ── */
+  #psCanvas {
+    display: block;
+    width: 100%;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    border-color: var(--teal);
+    background: rgba(0,229,204,0.12);
+    color: var(--teal);
+  }
+  .btn-primary:hover { background: rgba(0,229,204,0.22); box-shadow: var(--glow-teal); }
+
+  .btn-secondary {
+    border-color: var(--border);
+    background: transparent;
+    color: var(--dim);
+  }
+  .btn-secondary:hover { border-color: var(--dim); color: var(--text); }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--dim);
+  }
+
+  .speed-control input[type=range] {
+    width: 80px;
+    accent-color: var(--teal);
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .legend-color {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── MR PARAMS ── */
+  .params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .param-card {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .param-card .label {
+    font-size: 9px;
+    font-family: 'Space Mono', monospace;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .param-card .value {
+    font-size: 18px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    color: var(--teal);
+    margin-top: 2px;
+  }
+
+  .param-card .unit {
+    font-size: 10px;
+    color: var(--dim);
+    margin-left: 2px;
+  }
+
+  @media (max-width: 880px) {
+    .main-layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MRI SPIN ECHO — INTERACTIVE TEACHING TOOL</h1>
+  <p>90° RF → Dephasing → 180° Refocus → Echo Formation + k-space Encoding</p>
+  <span class="badge">RADIOLOGY RESIDENT EDUCATION v2.0</span>
+</header>
+
+<div class="main-layout">
+  <!-- LEFT COLUMN -->
+  <div class="left-col">
+
+    <!-- Step buttons -->
+    <div class="panel" style="padding-bottom:12px">
+      <div class="steps-bar" id="stepsBtns"></div>
+      <div class="info-box">
+        <div class="step-name" id="stepName">—</div>
+        <div class="step-desc" id="stepDesc">Select a step to begin.</div>
+        <div class="formula" id="stepFormula" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Bloch sphere + spin fan -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span>BLOCH SPHERE &amp; ISOCHROMAT ENSEMBLE</div>
+      <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:center">
+        <canvas id="blochCanvas" width="220" height="220"></canvas>
+        <canvas id="spinsCanvas" width="280" height="220"></canvas>
+      </div>
+      <div class="controls">
+        <button class="btn btn-primary" id="playBtn" onclick="togglePlay()">▶ PLAY</button>
+        <button class="btn btn-secondary" onclick="resetAnim()">↺ RESET</button>
+        <div class="speed-control">
+          <span>SPEED</span>
+          <input type="range" min="0.3" max="3" step="0.1" value="1" id="speedSlider">
+          <span id="speedVal">1×</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pulse sequence diagram -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span>FULL SPIN ECHO PULSE SEQUENCE DIAGRAM</div>
+      <canvas id="psCanvas" height="230"></canvas>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+
+    <!-- MR Parameters -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span>SEQUENCE PARAMETERS</div>
+      <div class="params-grid">
+        <div class="param-card">
+          <div class="label">TR</div>
+          <div class="value">600<span class="unit">ms</span></div>
+        </div>
+        <div class="param-card">
+          <div class="label">TE</div>
+          <div class="value">20<span class="unit">ms</span></div>
+        </div>
+        <div class="param-card">
+          <div class="label">ETL</div>
+          <div class="value">1<span class="unit">echo</span></div>
+        </div>
+        <div class="param-card">
+          <div class="label">BW</div>
+          <div class="value">±16<span class="unit">kHz</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span>ENCODING LEGEND</div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background:#00e5cc; box-shadow: 0 0 8px #00e5cc"></div>
+          <div><strong style="color:#00e5cc">90° RF Pulse</strong><br>Tip M₀ into transverse plane. Applied during slice-selective gradient.</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#ff4d6d; box-shadow: 0 0 8px #ff4d6d"></div>
+          <div><strong style="color:#ff4d6d">Dephasing</strong><br>Isochromats at different Larmor freq drift apart (T2* decay begins).</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#ffc947; box-shadow: 0 0 8px #ffc947"></div>
+          <div><strong style="color:#ffc947">180° Refocus Pulse</strong><br>Mirrors all spin phases → reverses dephasing. Does NOT reverse T2.</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#22d16e; box-shadow: 0 0 8px #22d16e"></div>
+          <div><strong style="color:#22d16e">Echo Formation</strong><br>Rephasing complete at TE. Signal maximum = spin echo.</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#a855f7; box-shadow: 0 0 8px #a855f7"></div>
+          <div><strong style="color:#a855f7">Phase Encoding (Gₚ)</strong><br>Gradient applied along y → encodes position via phase shift. One line per TR.</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#3d9bff; box-shadow: 0 0 8px #3d9bff"></div>
+          <div><strong style="color:#3d9bff">Frequency Encoding (Gf)</strong><br>Readout gradient during echo → encodes x-position via frequency.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- k-space mini display -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span>k-SPACE TRAJECTORY</div>
+      <canvas id="kspaceCanvas" width="310" height="160"></canvas>
+      <p style="font-size:11px; color:var(--dim); margin-top:8px; line-height:1.5">
+        Each TR fills one horizontal line. Phase encoding steps traverse k<sub>y</sub>; frequency readout fills k<sub>x</sub>.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA & STATE
+// ═══════════════════════════════════════════════════════
+const STEPS = [
+  {
+    id: 0,
+    label: 'EQUILIBRIUM',
+    color: '#00e5cc',
+    colorClass: '',
+    name: 'Equilibrium — M₀ along B₀',
+    desc: 'Net magnetization vector (M₀) aligned with the main magnetic field B₀ (+z axis). Protons precess at the Larmor frequency ω₀ = γ·B₀. No transverse component exists yet.',
+    formula: 'ω₀ = γ · B₀   (γ/2π ≈ 42.58 MHz/T)',
+    blochPhase: 'equilibrium',
+  },
+  {
+    id: 1,
+    label: 'SLICE SELECT\n+ 90° RF',
+    color: '#00e5cc',
+    colorClass: '',
+    name: 'Slice Selection + 90° RF Pulse',
+    desc: 'A slice-select gradient Gz is applied, making B₀ vary linearly along z. A band-limited sinc RF pulse at ω₀ excites only the desired slice. The 90° pulse rotates M₀ into the transverse (xy) plane.',
+    formula: 'Mxy = M₀ sin(α),  α = 90°  →  Mxy = M₀',
+    blochPhase: 'excite',
+  },
+  {
+    id: 2,
+    label: 'DEPHASING\n(T2* decay)',
+    color: '#ff4d6d',
+    colorClass: 'rose',
+    name: 'Free Precession & Dephasing',
+    desc: 'After excitation, spins precess at slightly different frequencies due to B₀ inhomogeneities and chemical shift. The isochromats fan out, reducing net transverse magnetization → T2* decay.',
+    formula: 'Mxy(t) = M₀ · e^(−t/T2*)',
+    blochPhase: 'dephase',
+  },
+  {
+    id: 3,
+    label: 'PHASE\nENCODE Gₚ',
+    color: '#a855f7',
+    colorClass: 'violet',
+    name: 'Phase Encoding Gradient (Gₚ)',
+    desc: 'A short gradient pulse Gy is applied along y. Spins at different y-positions accumulate different phase angles. Each TR uses a different Gy amplitude → fills a different k-space line.',
+    formula: 'φ(y) = γ · Gₚ · τ · y  →  ky = γ · Gₚ · τ',
+    blochPhase: 'phase',
+  },
+  {
+    id: 4,
+    label: '180° RF\nREFOCUS',
+    color: '#ffc947',
+    colorClass: 'gold',
+    name: '180° Refocusing Pulse',
+    desc: 'Applied at t = TE/2. Flips all transverse magnetization vectors about the x-axis (or y-axis). Fast spins are now behind slow ones → they will converge again. Reverses B₀ inhomogeneity dephasing but NOT true T2 decay.',
+    formula: '180° flip: φ → −φ for each isochromat',
+    blochPhase: 'refocus',
+  },
+  {
+    id: 5,
+    label: 'REPHASING\n→ ECHO',
+    color: '#22d16e',
+    colorClass: 'green',
+    name: 'Rephasing → Spin Echo',
+    desc: 'Spins rephase symmetrically. At t = TE, all isochromats realign → spin echo forms. Signal amplitude reflects true T2 decay (not T2*). The echo is the k-space readout.',
+    formula: 'Signal = M₀ · e^(−TE/T2) · (1−e^(−TR/T1))',
+    blochPhase: 'echo',
+  },
+  {
+    id: 6,
+    label: 'FREQ ENCODE\nREADOUT',
+    color: '#3d9bff',
+    colorClass: 'blue',
+    name: 'Frequency Encoding & Readout',
+    desc: 'A readout (frequency-encode) gradient Gx is applied during the echo. Spins at different x-positions precess at different frequencies → spatial position encoded in frequency. FID is digitized to fill one k-space line.',
+    formula: 'kx(t) = γ · ∫Gx dt   (fills k-space line)',
+    blochPhase: 'readout',
+  },
+];
+
+let currentStep = 0;
+let animT = 0;      // 0→1 within a step
+let playing = false;
+let lastTime = null;
+let speed = 1;
+let animFrame = null;
+
+// ── canvas references ──
+const blochC   = document.getElementById('blochCanvas');
+const blochCtx = blochC.getContext('2d');
+const spinsC   = document.getElementById('spinsCanvas');
+const spinsCtx = spinsC.getContext('2d');
+const psC      = document.getElementById('psCanvas');
+const psCtx    = psC.getContext('2d');
+const ksC      = document.getElementById('kspaceCanvas');
+const ksCtx    = ksC.getContext('2d');
+
+// ── build step buttons ──
+const btnContainer = document.getElementById('stepsBtns');
+STEPS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = `step-btn ${s.colorClass}`;
+  b.innerHTML = s.label.replace('\n','<br>');
+  b.onclick = () => { goToStep(i); };
+  btnContainer.appendChild(b);
+});
+
+// ═══════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════
+function goToStep(i) {
+  currentStep = i;
+  animT = 0;
+  updateUI();
+  drawAll();
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('playBtn').textContent = playing ? '⏸ PAUSE' : '▶ PLAY';
+  if (playing) {
+    lastTime = null;
+    animFrame = requestAnimationFrame(animLoop);
+  } else {
+    cancelAnimationFrame(animFrame);
+  }
+}
+
+function resetAnim() {
+  playing = false;
+  cancelAnimationFrame(animFrame);
+  document.getElementById('playBtn').textContent = '▶ PLAY';
+  currentStep = 0;
+  animT = 0;
+  updateUI();
+  drawAll();
+}
+
+document.getElementById('speedSlider').addEventListener('input', function() {
+  speed = parseFloat(this.value);
+  document.getElementById('speedVal').textContent = speed.toFixed(1) + '×';
+});
+
+function animLoop(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = (ts - lastTime) / 1000;
+  lastTime = ts;
+  animT += dt * speed * 0.4;
+  if (animT > 1) {
+    animT = 0;
+    currentStep = (currentStep + 1) % STEPS.length;
+    updateUI();
+  }
+  drawAll();
+  if (playing) animFrame = requestAnimationFrame(animLoop);
+}
+
+function updateUI() {
+  const s = STEPS[currentStep];
+  document.getElementById('stepName').textContent = s.name;
+  document.getElementById('stepName').style.color = s.color;
+  document.getElementById('stepDesc').textContent = s.desc;
+  const fEl = document.getElementById('stepFormula');
+  if (s.formula) { fEl.textContent = s.formula; fEl.style.display = 'block'; }
+  else fEl.style.display = 'none';
+
+  document.querySelectorAll('.step-btn').forEach((b, i) => {
+    b.className = `step-btn ${STEPS[i].colorClass} ${i === currentStep ? 'active' : ''}`;
+  });
+
+  drawPulseSequence();
+  drawKspace();
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+function hex2rgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16),
+        g = parseInt(hex.slice(3,5),16),
+        b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function drawArrow(ctx, x1,y1, x2,y2, color, lineW=2, headSize=8) {
+  const angle = Math.atan2(y2-y1, x2-x1);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = lineW;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headSize*Math.cos(angle-0.35), y2 - headSize*Math.sin(angle-0.35));
+  ctx.lineTo(x2 - headSize*Math.cos(angle+0.35), y2 - headSize*Math.sin(angle+0.35));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BLOCH SPHERE
+// ═══════════════════════════════════════════════════════
+function drawBloch() {
+  const ctx = blochCtx;
+  const W = blochC.width, H = blochC.height;
+  const cx = W/2, cy = H/2, R = 88;
+  ctx.clearRect(0,0,W,H);
+
+  // background glow
+  const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,R+20);
+  grad.addColorStop(0, 'rgba(0,229,204,0.04)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // sphere outline
+  ctx.save();
+  ctx.strokeStyle = '#1a2d4a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+
+  // equator (ellipse)
+  ctx.beginPath(); ctx.ellipse(cx,cy,R,R*0.3,0,0,Math.PI*2);
+  ctx.strokeStyle = '#1a2d4a'; ctx.stroke();
+
+  // axes
+  ctx.setLineDash([3,4]);
+  ctx.strokeStyle = '#2a3d5a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx,cy-R-10); ctx.lineTo(cx,cy+R+10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-R-10,cy); ctx.lineTo(cx+R+10,cy); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // axis labels
+  ctx.font = 'bold 11px Space Mono, monospace';
+  ctx.fillStyle = '#5a7a9a';
+  ctx.fillText('+z', cx+4, cy-R-12);
+  ctx.fillText('−z', cx+4, cy+R+20);
+  ctx.fillText('+x', cx+R+8, cy+4);
+
+  // compute M vector based on step & animT
+  const t = easeInOut(Math.min(animT, 1));
+  const phase = STEPS[currentStep].blochPhase;
+
+  let theta = 0, phi = 0; // theta=polar(from z), phi=azimuthal
+  // precession angle for animation
+  const prec = animT * Math.PI * 2;
+
+  if (phase === 'equilibrium') { theta = 0; phi = 0; }
+  else if (phase === 'excite') { theta = lerp(0, Math.PI/2, t); phi = 0; }
+  else if (phase === 'dephase') { theta = Math.PI/2; phi = lerp(0, Math.PI*0.7, t); }
+  else if (phase === 'phase')   { theta = Math.PI/2; phi = Math.PI*0.7; }
+  else if (phase === 'refocus') { theta = lerp(Math.PI/2, Math.PI/2, t); phi = lerp(Math.PI*0.7, -Math.PI*0.7, t); }
+  else if (phase === 'echo')    { theta = Math.PI/2; phi = lerp(-Math.PI*0.7, 0, t); }
+  else if (phase === 'readout') { theta = lerp(Math.PI/2, 0, t * 0.5); phi = 0; }
+
+  // project 3D → 2D (oblique projection)
+  const Mx = Math.sin(theta) * Math.cos(phi);
+  const My = Math.sin(theta) * Math.sin(phi);
+  const Mz = Math.cos(theta);
+
+  // simple oblique: x→right, y→right+down (depth), z→up
+  const proj = (mx,my,mz) => ({
+    x: cx + (mx*0.85 - my*0.45)*R,
+    y: cy + (-mz*0.9 + my*0.25)*R
+  });
+
+  const tip = proj(Mx, My, Mz);
+
+  // draw vector
+  drawArrow(ctx, cx,cy, tip.x, tip.y, STEPS[currentStep].color, 3, 10);
+
+  // vector label
+  ctx.font = 'bold 12px Space Mono, monospace';
+  ctx.fillStyle = STEPS[currentStep].color;
+  ctx.shadowColor = STEPS[currentStep].color;
+  ctx.shadowBlur = 8;
+  ctx.fillText('M', tip.x + 6, tip.y - 6);
+  ctx.shadowBlur = 0;
+
+  // If dephasing/echo, show faded ghost vectors
+  if (phase === 'dephase' || phase === 'echo' || phase === 'refocus') {
+    const nGhosts = 5;
+    for (let i = 0; i < nGhosts; i++) {
+      const gPhi = (phase === 'dephase')
+        ? phi * (i+1) / nGhosts
+        : (phase === 'refocus')
+          ? lerp(Math.PI*0.7*(i+1)/nGhosts, -Math.PI*0.7*(i+1)/nGhosts, t)
+          : lerp(-phi*(i+1)/nGhosts, 0, t);
+      const gx = Math.sin(Math.PI/2)*Math.cos(gPhi);
+      const gy = Math.sin(Math.PI/2)*Math.sin(gPhi);
+      const gtip = proj(gx,gy,0);
+      ctx.save();
+      ctx.globalAlpha = 0.25 + 0.05*i;
+      ctx.strokeStyle = '#ff4d6d';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#ff4d6d';
+      ctx.shadowBlur = 4;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(gtip.x,gtip.y); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Label
+  ctx.font = '10px Space Mono, monospace';
+  ctx.fillStyle = '#5a7a9a';
+  ctx.fillText('BLOCH', cx - 22, H - 6);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SPIN ISOCHROMAT FAN
+// ═══════════════════════════════════════════════════════
+function drawSpins() {
+  const ctx = spinsCtx;
+  const W = spinsC.width, H = spinsC.height;
+  const cx = W/2, cy = H/2;
+  ctx.clearRect(0,0,W,H);
+
+  const phase = STEPS[currentStep].blochPhase;
+  const t = easeInOut(Math.min(animT,1));
+
+  // draw circle outline
+  ctx.save();
+  ctx.strokeStyle = '#1a2d4a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx,cy,82,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+
+  // axis labels
+  ctx.font = '10px Space Mono, monospace';
+  ctx.fillStyle = '#2a3d5a';
+  ctx.fillText('+x', cx+82+4, cy+4);
+  ctx.fillText('+y', cx-8, cy-82-6);
+
+  // dashed axes
+  ctx.save();
+  ctx.setLineDash([3,4]);
+  ctx.strokeStyle = '#1a3050';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx-95,cy); ctx.lineTo(cx+95,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-95); ctx.lineTo(cx,cy+95); ctx.stroke();
+  ctx.restore();
+
+  // compute spin angles for isochromats (7 spins, ±spread)
+  const N = 7;
+  const spins = [];
+
+  for (let i = 0; i < N; i++) {
+    const frac = (i/(N-1) - 0.5); // -0.5 → +0.5
+    let angle = 0; // from +x axis (xy plane)
+    let alpha = 1;
+
+    if (phase === 'equilibrium') {
+      // All spins vertical (pointing up = into page, show as dot)
+      angle = null; // dot only
+    } else if (phase === 'excite') {
+      angle = lerp(null, 0, t); // appear along +x
+      angle = 0;
+      alpha = t;
+    } else if (phase === 'dephase') {
+      // fan out
+      angle = lerp(0, frac * Math.PI * 1.2, t);
+    } else if (phase === 'phase') {
+      // phase encode: slight overall phase shift
+      angle = frac * Math.PI * 1.2 + lerp(0, 0.3, t);
+    } else if (phase === 'refocus') {
+      // 180 flip: spins mirror
+      const before = frac * Math.PI * 1.2;
+      const after  = -frac * Math.PI * 1.2;
+      angle = lerp(before, after, t);
+    } else if (phase === 'echo') {
+      // converge back to 0
+      angle = lerp(-frac * Math.PI * 1.2, 0, t);
+    } else if (phase === 'readout') {
+      angle = 0;
+    }
+
+    spins.push({ angle, alpha, freq: frac });
+  }
+
+  // draw spins
+  spins.forEach((s, i) => {
+    const len = 72;
+    let col;
+    if (phase === 'echo' || phase === 'readout') col = '#22d16e';
+    else if (phase === 'refocus') col = '#ffc947';
+    else if (phase === 'dephase' || phase === 'phase') col = i === Math.floor(N/2) ? '#00e5cc' : '#ff4d6d';
+    else col = '#00e5cc';
+
+    ctx.save();
+    ctx.globalAlpha = s.alpha * 0.9;
+    if (s.angle === null) {
+      // equilibrium: dot
+      ctx.fillStyle = '#00e5cc';
+      ctx.shadowColor = '#00e5cc';
+      ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+    } else {
+      const ex = cx + len * Math.cos(s.angle);
+      const ey = cy - len * Math.sin(s.angle);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = i === Math.floor(N/2) ? 2.5 : 1.5;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = i === Math.floor(N/2) ? 12 : 5;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey); ctx.stroke();
+      // arrowhead
+      const angle2 = Math.atan2(-(ey-cy), ex-cx);
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(ex,ey);
+      ctx.lineTo(ex - 8*Math.cos(angle2-0.3), ey + 8*Math.sin(angle2-0.3));
+      ctx.lineTo(ex - 8*Math.cos(angle2+0.3), ey + 8*Math.sin(angle2+0.3));
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  // echo glow ring
+  if (phase === 'echo' && t > 0.8) {
+    const alpha = (t-0.8)/0.2;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.strokeStyle = '#22d16e';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#22d16e';
+    ctx.shadowBlur = 20;
+    ctx.beginPath(); ctx.arc(cx,cy,85,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // label
+  ctx.font = '10px Space Mono, monospace';
+  ctx.fillStyle = '#5a7a9a';
+  ctx.fillText('TRANSVERSE PLANE (xy)', cx-68, H-6);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PULSE SEQUENCE DIAGRAM
+// ═══════════════════════════════════════════════════════
+function drawPulseSequence() {
+  const ctx = psCtx;
+  const W = psC.offsetWidth || 720;
+  psC.width = W;
+  const H = 230;
+  ctx.clearRect(0,0,W,H);
+
+  const rows = [
+    { label: 'RF',  color: '#00e5cc', y: 28 },
+    { label: 'Gz\n(Slice)', color: '#00c4ff', y: 68 },
+    { label: 'Gy\n(Phase)', color: '#a855f7', y: 108 },
+    { label: 'Gx\n(Freq)', color: '#3d9bff', y: 148 },
+    { label: 'Signal', color: '#22d16e', y: 190 },
+  ];
+
+  const rowH = 28;
+  const labelW = 62;
+  const plotW = W - labelW - 16;
+  const px = labelW + 8;
+  const baselineY_offset = 14;
+
+  // grid lines
+  ctx.save();
+  ctx.strokeStyle = '#0f1f35';
+  ctx.lineWidth = 1;
+  rows.forEach(r => {
+    ctx.beginPath();
+    ctx.moveTo(px, r.y + baselineY_offset);
+    ctx.lineTo(px + plotW, r.y + baselineY_offset);
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  // time markers
+  const events = {
+    tr_start: 0.02,
+    rf90:  0.10,
+    gz_se: 0.10,
+    gz_end: 0.19,
+    gy:    0.22,
+    gy_end:0.29,
+    gx_pre:0.32,
+    rf180: 0.50,
+    gx_start: 0.60,
+    gx_end: 0.82,
+    echo: 0.71,
+    tr_end: 1.0,
+  };
+
+  function px2(frac) { return px + frac * plotW; }
+
+  // draw dashed time lines
+  ctx.save();
+  ctx.setLineDash([3,5]);
+  ctx.strokeStyle = '#1a2d4a';
+  ctx.lineWidth = 1;
+  [events.rf90, events.rf180, events.echo].forEach(f => {
+    ctx.beginPath();
+    ctx.moveTo(px2(f), 14);
+    ctx.lineTo(px2(f), H - 10);
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  // current step highlight
+  const stepFracs = [0.03, 0.10, 0.28, 0.27, 0.50, 0.71, 0.75];
+  if (currentStep < stepFracs.length) {
+    ctx.save();
+    ctx.fillStyle = `${STEPS[currentStep].color}18`;
+    ctx.strokeStyle = STEPS[currentStep].color;
+    ctx.lineWidth = 1;
+    const hlx = px2(stepFracs[currentStep] - 0.04);
+    const hlw = plotW * 0.1;
+    ctx.fillRect(hlx, 6, hlw, H-12);
+    ctx.strokeRect(hlx, 6, hlw, H-12);
+    ctx.restore();
+  }
+
+  // ── ROW LABELS ──
+  ctx.font = '9px Space Mono, monospace';
+  rows.forEach(r => {
+    ctx.fillStyle = r.color;
+    r.label.split('\n').forEach((line, li) => {
+      ctx.fillText(line, 4, r.y + 6 + li*10);
+    });
+  });
+
+  // ── RF ROW ──
+  const rfR = rows[0]; const rfY = rfR.y + baselineY_offset;
+  // 90° sinc pulse
+  drawSincPulse(ctx, px2(events.rf90), rfY, 18, 10, rfR.color, '90°');
+  // 180° sinc pulse (taller)
+  drawSincPulse(ctx, px2(events.rf180), rfY, 18, 16, '#ffc947', '180°');
+
+  // ── Gz ──
+  const gzR = rows[1]; const gzY = gzR.y + baselineY_offset;
+  // positive slice select
+  drawRect(ctx, px2(events.gz_se), gzY, px2(events.gz_end), gzY - 12, gzR.color, 0.8);
+  // negative rephase
+  drawRect(ctx, px2(events.gz_end+0.01), gzY, px2(events.gz_end+0.07), gzY+6, gzR.color, 0.5);
+  // 180° slice select
+  drawRect(ctx, px2(events.rf180-0.04), gzY, px2(events.rf180+0.04), gzY-12, gzR.color, 0.8);
+
+  // ── Gy (phase) ──
+  const gyR = rows[2]; const gyY = gyR.y + baselineY_offset;
+  drawRect(ctx, px2(events.gy), gyY, px2(events.gy_end), gyY - 10, gyR.color, 0.85);
+  // label steps
+  ctx.font = '8px Space Mono, monospace';
+  ctx.fillStyle = gyR.color;
+  ctx.fillText('PE step', px2(events.gy), gyY - 14);
+
+  // ── Gx (frequency) ──
+  const gxR = rows[3]; const gxY = gxR.y + baselineY_offset;
+  // prephase (negative)
+  drawRect(ctx, px2(events.gx_pre), gxY, px2(events.gx_pre+0.09), gxY+7, gxR.color, 0.7);
+  // readout gradient
+  drawRect(ctx, px2(events.gx_start), gxY, px2(events.gx_end), gxY - 11, gxR.color, 0.9);
+
+  // ── Signal ──
+  const sigR = rows[4]; const sigY = sigR.y + baselineY_offset;
+  // T2* decay after 90°
+  drawDecayCurve(ctx, px2(events.rf90+0.05), sigY, px2(events.rf180-0.02), sigY, 18, '#ff4d6d', 0.5);
+  // echo at TE
+  drawEchoCurve(ctx, px2(events.echo), sigY, 28, 18, sigR.color);
+
+  // time labels
+  ctx.font = '9px Space Mono, monospace';
+  ctx.fillStyle = '#5a7a9a';
+  ctx.fillText('TE/2', px2(events.rf180) - 12, H - 2);
+  ctx.fillText('TE', px2(events.echo) - 8, H - 2);
+  ctx.fillText('TR', px2(0.9), H - 2);
+  ctx.fillText('TR start', px2(0.01), H - 2);
+
+  // top labels
+  ctx.fillStyle = '#00e5cc';
+  ctx.font = 'bold 9px Space Mono, monospace';
+  ctx.fillText('90°', px2(events.rf90) - 8, 12);
+  ctx.fillStyle = '#ffc947';
+  ctx.fillText('180°', px2(events.rf180) - 10, 12);
+  ctx.fillStyle = '#22d16e';
+  ctx.fillText('ECHO', px2(events.echo) - 10, 12);
+}
+
+function drawSincPulse(ctx, cx, baseline, width, amp, color, label) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  for (let i = -width; i <= width; i++) {
+    const x = cx + i;
+    const t = (i / width) * Math.PI * 2.5;
+    const y = baseline - amp * (Math.abs(t) < 0.001 ? 1 : Math.sin(t)/t) * 0.9;
+    i === -width ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.font = 'bold 9px Space Mono, monospace';
+  ctx.fillStyle = color;
+  ctx.shadowBlur = 0;
+  ctx.fillText(label, cx - 8, baseline - amp - 3);
+  ctx.restore();
+}
+
+function drawRect(ctx, x1, y1, x2, y2, color, alpha=1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color + '30';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 5;
+  const rx = Math.min(x1,x2), ry = Math.min(y1,y2);
+  const rw = Math.abs(x2-x1), rh = Math.abs(y2-y1);
+  ctx.fillRect(rx,ry,rw,rh);
+  ctx.strokeRect(rx,ry,rw,rh);
+  ctx.restore();
+}
+
+function drawDecayCurve(ctx, x1, baseline, x2, _, amp, color, alpha) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  const steps = 40;
+  for (let i = 0; i <= steps; i++) {
+    const f = i/steps;
+    const x = x1 + f*(x2-x1);
+    const y = baseline - amp * Math.exp(-f*3);
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawEchoCurve(ctx, cx, baseline, halfW, amp, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  const steps = 60;
+  for (let i = 0; i <= steps; i++) {
+    const t = (i/steps - 0.5) * 2; // -1 → 1
+    const x = cx + t * halfW;
+    const y = baseline - amp * Math.exp(-t*t*4);
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  k-SPACE DIAGRAM
+// ═══════════════════════════════════════════════════════
+function drawKspace() {
+  const ctx = ksCtx;
+  const W = ksC.width, H = ksC.height;
+  ctx.clearRect(0,0,W,H);
+
+  const cx = W/2, cy = H/2;
+  const kw = W - 40, kh = H - 40;
+  const ox = 20, oy = 20;
+
+  // background
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(ox, oy, kw, kh);
+
+  // grid lines
+  ctx.save();
+  ctx.strokeStyle = '#0d1f35';
+  ctx.lineWidth = 1;
+  const nLines = 7;
+  for (let i = 0; i <= nLines; i++) {
+    const y = oy + (i / nLines) * kh;
+    ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox+kw, y); ctx.stroke();
+  }
+  ctx.restore();
+
+  // highlighted lines (filled k-space lines)
+  const phase = STEPS[currentStep].blochPhase;
+  const nFilled = {
+    equilibrium: 0, excite: 0, dephase: 1, phase: 2,
+    refocus: 3, echo: 4, readout: 7
+  }[phase] || 0;
+
+  for (let i = 0; i < nFilled; i++) {
+    const y = oy + ((i + 0.5) / nLines) * kh;
+    const grad = ctx.createLinearGradient(ox, y, ox+kw, y);
+    grad.addColorStop(0, 'rgba(168,85,247,0)');
+    grad.addColorStop(0.5, 'rgba(61,155,255,0.7)');
+    grad.addColorStop(1, 'rgba(168,85,247,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#3d9bff';
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox+kw, y); ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // center dot (DC)
+  ctx.fillStyle = '#ffc947';
+  ctx.shadowColor = '#ffc947';
+  ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // axes labels
+  ctx.font = '10px Space Mono, monospace';
+  ctx.fillStyle = '#3d9bff';
+  ctx.fillText('kx →', ox + kw - 28, oy + kh + 14);
+  ctx.fillStyle = '#a855f7';
+  ctx.save();
+  ctx.translate(ox - 8, cy);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('ky', -8, 0);
+  ctx.restore();
+
+  // box border
+  ctx.strokeStyle = '#1a2d4a';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(ox, oy, kw, kh);
+
+  // label
+  ctx.fillStyle = '#5a7a9a';
+  ctx.font = '9px Space Mono, monospace';
+  ctx.fillText(`${nFilled}/${nLines} lines acquired`, ox+4, oy+kh-4);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN DRAW
+// ═══════════════════════════════════════════════════════
+function drawAll() {
+  drawBloch();
+  drawSpins();
+  drawPulseSequence();
+  drawKspace();
+}
+
+// ── init ──
+goToStep(0);
+
+// ── resize pulse seq canvas ──
+function resizePS() {
+  const w = psC.parentElement.clientWidth - 32;
+  if (psC.width !== w) { psC.width = w; drawPulseSequence(); }
+}
+window.addEventListener('resize', resizePS);
+resizePS();
+</script>
+</body>
+</html>
